@@ -1,0 +1,67 @@
+package com.ecommerce.service;
+
+import com.ecommerce.dto.APISuccessResponse;
+import com.ecommerce.dto.CategoryDTO;
+import com.ecommerce.dto.CategoryResponse;
+import com.ecommerce.exceptions.APIException;
+import com.ecommerce.exceptions.ResourceAlreadyExistException;
+import com.ecommerce.exceptions.ResourceNotExistException;
+import com.ecommerce.model.Category;
+import com.ecommerce.repository.CategoryRepository;
+import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class CategoryServiceImpl implements CategoryService {
+
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private ModelMapper modelMapper;
+
+    @Override
+    public CategoryResponse getAllCategories() {
+        List<Category> categoryList = categoryRepository.findAll();
+        if(categoryList.isEmpty()) {
+            throw new APIException("Category","is empty");
+        }
+        List<CategoryDTO> categoryDTOS = categoryList.stream().map(category ->
+            modelMapper.map(category, CategoryDTO.class)).toList();
+        CategoryResponse categoryResponse = new CategoryResponse();
+        categoryResponse.setResponse(categoryDTOS);
+        return categoryResponse;
+    }
+
+    @Override
+    public APISuccessResponse saveCategory(CategoryDTO categoryDTO) {
+        Optional<Category> existingCategory = categoryRepository.findByCategoryName(categoryDTO.getCategoryName());
+        if (existingCategory.isPresent()) {
+            throw new ResourceAlreadyExistException("Category","already exist with","categoryName",categoryDTO.getCategoryName());
+        }
+        Category category = modelMapper.map(categoryDTO, Category.class);
+        Category savedCategory = categoryRepository.save(category);
+        return new APISuccessResponse("Category saved successfully",true, modelMapper.map(savedCategory, CategoryDTO.class));
+    }
+
+    @Override
+    public APISuccessResponse updateCategory(Long categoryId, CategoryDTO categoryDTO) {
+        Category findCategory = categoryRepository.findById(categoryId).orElseThrow(() ->
+                new ResourceNotExistException("Category","not present with","categoryId",categoryId));
+        findCategory.setCategoryName(categoryDTO.getCategoryName());
+        Category savedCategory = categoryRepository.save(findCategory);
+        return new APISuccessResponse("Category updated successfully",true, modelMapper.map(savedCategory, CategoryDTO.class));
+    }
+
+    @Override
+    public APISuccessResponse deleteCategory(Long categoryId) {
+        Category findCategory = categoryRepository.findById(categoryId).orElseThrow(() ->
+                new ResourceNotExistException("Category","not present with","categoryId",categoryId));
+        categoryRepository.delete(findCategory);
+        return new APISuccessResponse("Category deleted successfully",true, modelMapper.map(findCategory, CategoryDTO.class));
+    }
+}
