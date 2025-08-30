@@ -6,7 +6,7 @@ import com.ecommerce.dto.CategoryResponse;
 import jakarta.validation.Valid;
 
 public interface CategoryService {
-    CategoryResponse getAllCategories();
+    CategoryResponse getAllCategories(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder);
 
     APISuccessResponse saveCategory(@Valid CategoryDTO categoryDTO);
 
