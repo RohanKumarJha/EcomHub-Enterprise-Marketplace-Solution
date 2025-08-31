@@ -9,6 +9,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class APISuccessResponse {
     private String message;
-    private boolean flag;
-    private CategoryDTO categoryDTO;
+    private boolean isSuccessful;
+    private Object object;
 }

@@ -29,14 +29,11 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public CategoryResponse getAllCategories(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
-
         Sort sort = sortOrder.equalsIgnoreCase("asc")
                 ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
-
         Pageable pageDetails = PageRequest.of(pageNumber, pageSize, sort);
         Page<Category> page = categoryRepository.findAll(pageDetails);
-
         List<Category> categoryList = page.getContent();
         if(categoryList.isEmpty()) {
             throw new APIException("Category page","is empty");
@@ -60,7 +57,8 @@ public class CategoryServiceImpl implements CategoryService {
         }
         Category category = modelMapper.map(categoryDTO, Category.class);
         Category savedCategory = categoryRepository.save(category);
-        return new APISuccessResponse("Category saved successfully",true, modelMapper.map(savedCategory, CategoryDTO.class));
+        CategoryDTO categoryDTOs = modelMapper.map(savedCategory, CategoryDTO.class);
+        return new APISuccessResponse("Category saved successfully",true, categoryDTOs);
     }
 
     @Override
@@ -69,7 +67,8 @@ public class CategoryServiceImpl implements CategoryService {
                 new ResourceNotExistException("Category","not present with","categoryId",categoryId));
         findCategory.setCategoryName(categoryDTO.getCategoryName());
         Category savedCategory = categoryRepository.save(findCategory);
-        return new APISuccessResponse("Category updated successfully",true, modelMapper.map(savedCategory, CategoryDTO.class));
+        CategoryDTO categoryDTOs = modelMapper.map(savedCategory, CategoryDTO.class);
+        return new APISuccessResponse("Category updated successfully",true, categoryDTOs);
     }
 
     @Override
@@ -77,6 +76,7 @@ public class CategoryServiceImpl implements CategoryService {
         Category findCategory = categoryRepository.findById(categoryId).orElseThrow(() ->
                 new ResourceNotExistException("Category","not present with","categoryId",categoryId));
         categoryRepository.delete(findCategory);
-        return new APISuccessResponse("Category deleted successfully",true, modelMapper.map(findCategory, CategoryDTO.class));
+        CategoryDTO categoryDTOs = modelMapper.map(findCategory, CategoryDTO.class);
+        return new APISuccessResponse("Category deleted successfully",true, categoryDTOs);
     }
 }
