@@ -1,16 +1,14 @@
 package com.ecommerce.service;
 
-import com.ecommerce.dto.APISuccessResponse;
 import com.ecommerce.dto.CategoryDTO;
 import com.ecommerce.dto.CategoryResponse;
-import jakarta.validation.Valid;
 
 public interface CategoryService {
     CategoryResponse getAllCategories(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder);
 
-    APISuccessResponse saveCategory(@Valid CategoryDTO categoryDTO);
+    CategoryDTO createCategory(CategoryDTO categoryDTO);
 
-    APISuccessResponse updateCategory(Long categoryId, @Valid CategoryDTO categoryDTO);
+    CategoryDTO deleteCategory(Long categoryId);
 
-    APISuccessResponse deleteCategory(Long categoryId);
+    CategoryDTO updateCategory(CategoryDTO categoryDTO, Long categoryId);
 }

@@ -1,7 +1,12 @@
 package com.ecommerce.exceptions;
 
 public class APIException extends RuntimeException {
-    public APIException(String fieldName, String isEmpty) {
-        super(fieldName+" "+isEmpty);
+    private static final long serialVersionUID = 1L;
+
+    public APIException() {
+    }
+
+    public APIException(String message) {
+        super(message);
     }
 }

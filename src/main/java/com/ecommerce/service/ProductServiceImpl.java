@@ -1,12 +1,9 @@
 package com.ecommerce.service;
 
-import com.ecommerce.dto.APISuccessResponse;
-import com.ecommerce.dto.CategoryDTO;
 import com.ecommerce.dto.ProductDTO;
 import com.ecommerce.dto.ProductResponse;
 import com.ecommerce.exceptions.APIException;
-import com.ecommerce.exceptions.ResourceAlreadyExistException;
-import com.ecommerce.exceptions.ResourceNotExistException;
+import com.ecommerce.exceptions.ResourceNotFoundException;
 import com.ecommerce.model.Category;
 import com.ecommerce.model.Product;
 import com.ecommerce.repository.CategoryRepository;
@@ -18,6 +15,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -28,110 +26,136 @@ public class ProductServiceImpl implements ProductService {
     private ProductRepository productRepository;
 
     @Autowired
-    private ModelMapper modelMapper;
-
-    @Autowired
     private CategoryRepository categoryRepository;
 
+    @Autowired
+    private ModelMapper modelMapper;
+
     @Override
-    public APISuccessResponse createProduct(Long categoryId, ProductDTO productDTO) {
-        Category findCategory = categoryRepository.findById(categoryId).orElseThrow(() ->
-                new ResourceNotExistException("Category", "not present with", "categoryId", categoryId));
-        Product existingProduct = productRepository.findByProductName(productDTO.getProductName());
-        if (existingProduct != null) {
-            throw new ResourceAlreadyExistException("Product","already exist with","productName",productDTO.getProductName());
+    public ProductDTO addProduct(Long categoryId, ProductDTO productDTO) {
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Category", "categoryId", categoryId));
+        boolean isProductNotPresent = true;
+        List<Product> products = category.getProducts();
+        for (Product value : products) {
+            if (value.getProductName().equals(productDTO.getProductName())) {
+                isProductNotPresent = false;
+                break;
+            }
         }
-        Product product = modelMapper.map(productDTO, Product.class);
-        product.setCategory(findCategory);
-        Product savedProduct = productRepository.save(product);
-        return new APISuccessResponse("Product created successfully", true,modelMapper.map(savedProduct, ProductDTO.class));
+        if (isProductNotPresent) {
+            Product product = modelMapper.map(productDTO, Product.class);
+            product.setImage("default.png");
+            product.setCategory(category);
+            double specialPrice = product.getPrice() -
+                    ((product.getDiscount() * 0.01) * product.getPrice());
+            product.setSpecialPrice(specialPrice);
+            Product savedProduct = productRepository.save(product);
+            return modelMapper.map(savedProduct, ProductDTO.class);
+        } else {
+            throw new APIException("Product already exist!!");
+        }
     }
 
     @Override
     public ProductResponse getAllProducts(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
-        Sort sort = sortOrder.equalsIgnoreCase("asc")
+        Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
                 ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
-        Pageable pageDetails = PageRequest.of(pageNumber, pageSize, sort);
-        Page<Product> page = productRepository.findAll(pageDetails);
-        List<Product> productList = page.getContent();
-        if(productList.isEmpty()) {
-            throw new APIException("Product page","is empty");
+        Pageable pageDetails = PageRequest.of(pageNumber, pageSize, sortByAndOrder);
+        Page<Product> pageProducts = productRepository.findAll(pageDetails);
+        List<Product> products = pageProducts.getContent();
+        List<ProductDTO> productDTOS = products.stream()
+                .map(product -> modelMapper.map(product, ProductDTO.class))
+                .toList();
+        ProductResponse productResponse = new ProductResponse();
+        productResponse.setContent(productDTOS);
+        productResponse.setPageNumber(pageProducts.getNumber());
+        productResponse.setPageSize(pageProducts.getSize());
+        productResponse.setTotalElements(pageProducts.getTotalElements());
+        productResponse.setTotalPages(pageProducts.getTotalPages());
+        productResponse.setLastPage(pageProducts.isLast());
+        return productResponse;
+    }
+
+    @Override
+    public ProductResponse searchByCategory(Long categoryId, Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
+        Category category = categoryRepository.findById(categoryId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Category", "categoryId", categoryId));
+        Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+        Pageable pageDetails = PageRequest.of(pageNumber, pageSize, sortByAndOrder);
+        Page<Product> pageProducts = productRepository.findByCategoryOrderByPriceAsc(category, pageDetails);
+        List<Product> products = pageProducts.getContent();
+        if(products.isEmpty()){
+            throw new APIException(category.getCategoryName() + " category does not have any products");
         }
-        List<ProductDTO> productDTOList = productList.stream().map(product ->
-                modelMapper.map(product, ProductDTO.class)).toList();
+        List<ProductDTO> productDTOS = products.stream()
+                .map(product -> modelMapper.map(product, ProductDTO.class))
+                .toList();
         ProductResponse productResponse = new ProductResponse();
-        productResponse.setResponse(productDTOList);
-        productResponse.setPageNumber(page.getNumber());
-        productResponse.setPageSize(page.getSize());
-        productResponse.setNoOfElements(page.getNumberOfElements());
-        productResponse.setLastPage(page.isLast());
+        productResponse.setContent(productDTOS);
+        productResponse.setPageNumber(pageProducts.getNumber());
+        productResponse.setPageSize(pageProducts.getSize());
+        productResponse.setTotalElements(pageProducts.getTotalElements());
+        productResponse.setTotalPages(pageProducts.getTotalPages());
+        productResponse.setLastPage(pageProducts.isLast());
         return productResponse;
     }
 
     @Override
-    public ProductResponse findProductsByCategory(Long categoryId, Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
-        Category findCategory = categoryRepository.findById(categoryId).orElseThrow(
-                () -> new ResourceNotExistException("Category","not present with","categoryId",categoryId));
-        Sort sort = sortOrder.equalsIgnoreCase("asc")
+    public ProductResponse searchProductByKeyword(String keyword, Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
+        Sort sortByAndOrder = sortOrder.equalsIgnoreCase("asc")
                 ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
-        Pageable pageDetails = PageRequest.of(pageNumber, pageSize, sort);
-        Page<Product> page = productRepository.findByCategory(findCategory, pageDetails);
-        List<Product> productList = page.getContent();
-        if(productList.isEmpty()) {
-            throw new APIException("Product page","is empty");
+        Pageable pageDetails = PageRequest.of(pageNumber, pageSize, sortByAndOrder);
+        Page<Product> pageProducts = productRepository.findByProductNameLikeIgnoreCase('%' + keyword + '%', pageDetails);
+        List<Product> products = pageProducts.getContent();
+        List<ProductDTO> productDTOS = products.stream()
+                .map(product -> modelMapper.map(product, ProductDTO.class))
+                .toList();
+        if(products.isEmpty()){
+            throw new APIException("Products not found with keyword: " + keyword);
         }
-        List<ProductDTO> productDTOList = productList.stream().map(product ->
-                modelMapper.map(product, ProductDTO.class)).toList();
         ProductResponse productResponse = new ProductResponse();
-        productResponse.setResponse(productDTOList);
-        productResponse.setPageNumber(page.getNumber());
-        productResponse.setPageSize(page.getSize());
-        productResponse.setNoOfElements(page.getNumberOfElements());
-        productResponse.setLastPage(page.isLast());
+        productResponse.setContent(productDTOS);
+        productResponse.setPageNumber(pageProducts.getNumber());
+        productResponse.setPageSize(pageProducts.getSize());
+        productResponse.setTotalElements(pageProducts.getTotalElements());
+        productResponse.setTotalPages(pageProducts.getTotalPages());
+        productResponse.setLastPage(pageProducts.isLast());
         return productResponse;
     }
 
     @Override
-    public ProductResponse getProductByKeyword(String keyword, Integer pageNumber, Integer pageSize, String sortBy, String sortOrder) {
-        Sort sort = sortOrder.equalsIgnoreCase("asc")
-                ? Sort.by(sortBy).ascending()
-                : Sort.by(sortBy).descending();
-        Pageable pageDetails = PageRequest.of(pageNumber, pageSize, sort);
-        Page<Product> page = productRepository.findByProductNameContainingIgnoreCase(keyword, pageDetails);
-        List<Product> productList = page.getContent();
-        List<ProductDTO> productDTOList = productList.stream()
-                .map(product -> modelMapper.map(product, ProductDTO.class)).toList();
-        ProductResponse productResponse = new ProductResponse();
-        productResponse.setResponse(productDTOList);
-        productResponse.setPageNumber(page.getNumber());
-        productResponse.setPageSize(page.getSize());
-        productResponse.setNoOfElements(page.getNumberOfElements());
-        productResponse.setLastPage(page.isLast());
-        return productResponse;
-    }
-//
-    @Override
-    public APISuccessResponse updateProduct(Long productId, ProductDTO productDTO) {
-        Product findProduct = productRepository.findById(productId).orElseThrow(
-                () -> new ResourceNotExistException("Product","not present with","productId",productId));
-        findProduct.setProductName(productDTO.getProductName());
-        findProduct.setDescription(productDTO.getDescription());
-        findProduct.setImage(productDTO.getImage());
-        findProduct.setQuantity(productDTO.getQuantity());
-        findProduct.setPrice(productDTO.getPrice());
-        findProduct.setDiscount(productDTO.getDiscount());
-        findProduct.setSpecialPrice(productDTO.getSpecialPrice());
-        Product saveProduct = productRepository.save(findProduct);
-        return new APISuccessResponse("Product updated successfully",true,modelMapper.map(saveProduct, ProductDTO.class));
+    public ProductDTO updateProduct(Long productId, ProductDTO productDTO) {
+        Product productFromDb = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "productId", productId));
+        Product product = modelMapper.map(productDTO, Product.class);
+        productFromDb.setProductName(product.getProductName());
+        productFromDb.setDescription(product.getDescription());
+        productFromDb.setQuantity(product.getQuantity());
+        productFromDb.setDiscount(product.getDiscount());
+        productFromDb.setPrice(product.getPrice());
+        productFromDb.setSpecialPrice(product.getSpecialPrice());
+        Product savedProduct = productRepository.save(productFromDb);
+        return modelMapper.map(savedProduct, ProductDTO.class);
     }
 
     @Override
-    public APISuccessResponse deleteProduct(Long productId) {
-        Product findProduct = productRepository.findById(productId).orElseThrow(
-                () -> new ResourceNotExistException("Product","not present with","productId",productId));
-        productRepository.delete(findProduct);
-        return new APISuccessResponse("Product deleted successfully",true,modelMapper.map(findProduct, ProductDTO.class));
+    public ProductDTO deleteProduct(Long productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "productId", productId));
+        productRepository.delete(product);
+        return modelMapper.map(product, ProductDTO.class);
     }
+
+    @Override
+    public ProductDTO updateProductImage(Long productId, MultipartFile image) {
+        return null;
+    }
+
 }

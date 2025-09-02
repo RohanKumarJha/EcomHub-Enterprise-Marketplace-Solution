@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class APIExceptionResponse {
-    private String message;
-    private boolean isSuccessful;
+public class APIResponse {
+    public String message;
+    private boolean status;
 }
