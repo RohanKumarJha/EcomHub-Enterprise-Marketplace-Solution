@@ -4,7 +4,7 @@ import com.ecommerce.dto.CategoryDTO;
 import com.ecommerce.dto.CategoryResponse;
 
 public interface CategoryService {
-    CategoryResponse getAllCategories(Integer pageNumber, Integer pageSize, String sortBy, String sortOrder);
+    CategoryResponse getAllCategories(Integer PAGE_NUMBER, Integer PAGE_SIZE, String SORT_CATEGORIES_BY, String SORT_DIR);
 
     CategoryDTO createCategory(CategoryDTO categoryDTO);
 
