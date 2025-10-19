@@ -24,5 +24,9 @@ public class Category {
     @Column(nullable = false, unique = true)
     private String categoryName;
 
+    @OneToMany(mappedBy = "category", orphanRemoval = true, fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<Product> products = new ArrayList<>();
   
 }

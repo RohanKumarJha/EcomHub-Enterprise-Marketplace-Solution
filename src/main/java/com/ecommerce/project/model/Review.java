@@ -32,5 +32,12 @@ public class Review {
     @NotNull(message = "Review date is required")
     private LocalDate reviewDate;
 
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    @ManyToOne
+    @JoinColumn(name = "product_id", nullable = false)
+    private Product product;
     
 }

@@ -30,4 +30,12 @@ public class OrderItem {
     @Positive(message = "Product price must be greater than 0")
     private double orderedProductPrice;
 
+    @ManyToOne
+    @JoinColumn(name = "product_id", nullable = false)
+    private Product product;
+
+    @ManyToOne
+    @JoinColumn(name = "order_id", nullable = false)
+    private Order order;
+
 }

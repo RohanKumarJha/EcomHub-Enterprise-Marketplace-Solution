@@ -26,6 +26,9 @@ public class Role {
     @Size(min = 4, max = 20, message = "Role name must be between 4 and 20 characters")
     private RoleType roleName;
 
-   
+    @ManyToMany(mappedBy = "roles", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.EAGER)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Set<User> users = new HashSet<>();
 
 }

@@ -35,5 +35,8 @@ public class Payment {
     @NotBlank(message = "Payment Gateway name is required")
     private String pgName;
 
+    @OneToOne
+    @JoinColumn(name = "order_id", nullable = false)
+    private Order order;
     
 }

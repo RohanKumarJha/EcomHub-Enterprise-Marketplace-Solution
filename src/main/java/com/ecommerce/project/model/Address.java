@@ -49,5 +49,13 @@ public class Address {
         this.pincode = pincode;
     }
 
+    @ManyToOne
+    @JoinColumn(name = "user_id")
+    private User user;
+
+    @OneToOne(mappedBy = "address", orphanRemoval = true, cascade = CascadeType.ALL)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private Order order;
  
 }
