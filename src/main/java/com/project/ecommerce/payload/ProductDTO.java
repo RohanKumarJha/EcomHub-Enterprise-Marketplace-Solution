@@ -15,7 +15,7 @@ public class ProductDTO {
     @NotBlank(message = "ProductName should not blank")
     @Size(min = 5, max = 20, message = "ProductName should between 5 and 20")
     private String productName;
-    private String imagePath;
+    private String image;
 
     @NotBlank
     @Size(min = 6, message = "Product description must contain atleast 6 characters")

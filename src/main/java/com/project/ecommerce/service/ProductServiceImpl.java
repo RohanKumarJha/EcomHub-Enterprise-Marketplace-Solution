@@ -11,12 +11,13 @@ import com.project.ecommerce.repository.CategoryRepository;
 import com.project.ecommerce.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-
+import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,9 +25,13 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class ProductServiceImpl implements ProductService {
 
+    private final ModelMapper modelMapper;
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
-    private final ModelMapper modelMapper;
+    private final FileService fileService;
+
+    @Value("${project.image}")
+    private String path;
 
     @Override
     public ProductDTO createProduct(Long categoryId, ProductDTO productDTO) {
@@ -34,6 +39,7 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("Category", "id", categoryId));
         Product product = modelMapper.map(productDTO, Product.class);
         product.setCategory(category);
+        product.setImage("default.png");
         if (product.getDiscount() > 0) {
             double discountAmount = (product.getDiscount() / 100) * product.getPrice();
             product.setSpecialPrice(product.getPrice() - discountAmount);
@@ -131,7 +137,6 @@ public class ProductServiceImpl implements ProductService {
         }
         existingProduct.setProductName(productDTO.getProductName());
         existingProduct.setDescription(productDTO.getDescription());
-        existingProduct.setImage(productDTO.getImagePath());
         existingProduct.setPrice(productDTO.getPrice());
         existingProduct.setDiscount(productDTO.getDiscount());
         existingProduct.setQuantity(productDTO.getQuantity());
@@ -152,4 +157,16 @@ public class ProductServiceImpl implements ProductService {
         productRepository.delete(existingProduct);
         return modelMapper.map(existingProduct, ProductDTO.class);
     }
+
+    @Override
+    public ProductDTO updateProductImage(Long productId, MultipartFile image) {
+        Product existingProduct = productRepository.findById(productId)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "productId", productId));
+        String fileName = fileService.uploadImage(path, image);
+        existingProduct.setImage(fileName);
+        Product savedProduct = productRepository.save(existingProduct);
+        return modelMapper.map(savedProduct, ProductDTO.class);
+    }
+
+
 }
